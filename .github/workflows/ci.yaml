@@ -1,6 +1,6 @@
-# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
-#
-# Generated on 2025-10-24T10:26:02Z by kres 46e133d.
+env:
+  USERNAME: ${{ github.repository_owner }}
+  PLATFORM: linux/riscv64
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
@@ -25,8 +25,9 @@ jobs:
       issues: read
       packages: write
       pull-requests: read
+      id-token: write
     runs-on:
-      group: pkgs
+      - ubuntu-latest
     if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
     steps:
       - name: gather-system-info
@@ -59,15 +60,11 @@ jobs:
       - name: Unshallow
         run: |
           git fetch --prune --unshallow
+      - name: Set up Namespace CLI
+        uses: namespacelabs/nscloud-setup@v0
       - name: Set up Docker Buildx
         id: setup-buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          append: |
-            - endpoint: tcp://buildkit-arm64.ci.svc.cluster.local:1234
-              platforms: linux/arm64
-          driver: remote
-          endpoint: tcp://buildkit-amd64.ci.svc.cluster.local:1234
+        uses: namespacelabs/nscloud-setup-buildx-action@v0
       - name: build
         run: |
           make
