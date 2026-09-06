@@ -8,7 +8,8 @@ NAME := kubelet
 ARTIFACTS := _out
 OPERATING_SYSTEM := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 GOARCH := $(shell uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
-KUBELET_VER := v1.38.0-alpha.1
+KUBELET_VER := v1.36.4
+BUILD_DATE := 2026-08-26
 
 BUILD := docker buildx build
 PLATFORM ?= linux/amd64,linux/arm64
@@ -22,6 +23,7 @@ COMMON_ARGS += --build-arg=REGISTRY_AND_USERNAME=$(REGISTRY_AND_USERNAME)
 COMMON_ARGS += --build-arg=NAME=$(NAME)
 COMMON_ARGS += --build-arg=TAG=$(TAG)
 COMMON_ARGS += --build-arg=KUBELET_VER=$(KUBELET_VER)
+COMMON_ARGS += --build-arg=BUILD_DATE=$(BUILD_DATE)
 
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 IMAGE_SIGNER_RELEASE ?= v0.2.0
