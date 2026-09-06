@@ -1,7 +1,8 @@
 ## Using the builder this way keeps us from having to install wget and adding an extra
 ## fat step that just does a chmod on the kubelet binary
 
-ARG BASE_IMAGE=registry.k8s.io/build-image/debian-base:bookworm-v1.0.7
+# TODO build from https://github.com/kubernetes/release/tree/master/images/build
+ARG BASE_IMAGE=docker.io/debian:trixie-slim
 ARG SLIM_PACKAGES="ca-certificates libcap2 iptables nftables nfs-common util-linux"
 ARG FAT_PACKAGES="bash ceph-common cifs-utils e2fsprogs ethtool glusterfs-client iproute2 jq procps socat ucf udev xfsprogs"
 
@@ -11,18 +12,11 @@ RUN apk add --no-cache cosign
 
 ARG TARGETARCH
 ARG KUBELET_VER
-ARG KUBELET_URL=https://dl.k8s.io/release/${KUBELET_VER}/bin/linux/${TARGETARCH}/kubelet
+ARG BUILD_DATE
+ARG KUBELET_URL=https://github.com/Cloud-V-10xE/RISC-V-software/releases/download/release-${BUILD_DATE}/kubernetes-${KUBELET_VER}-riscv64-linux.tar.gz
 
-ADD ${KUBELET_URL} /kubelet
-ADD ${KUBELET_URL}.sig /kubelet.sig
-ADD ${KUBELET_URL}.cert /kubelet.cert
-
-# see https://kubernetes.io/docs/tasks/administer-cluster/verify-signed-artifacts/
-RUN cosign verify-blob "/kubelet" \
-  --signature "/kubelet.sig" \
-  --certificate "/kubelet.cert" \
-  --certificate-identity krel-staging@k8s-releng-prod.iam.gserviceaccount.com \
-  --certificate-oidc-issuer https://accounts.google.com
+ADD --unpack ${KUBELET_URL} kubernetes
+RUN mv kubernetes/bin/kubelet /kubelet && rm -rf kubernetes
 
 RUN chmod +x /kubelet
 
@@ -39,10 +33,18 @@ FROM base AS container-fat
 
 ARG SLIM_PACKAGES
 ARG FAT_PACKAGES
-RUN clean-install \
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
   --allow-change-held-packages \
   ${SLIM_PACKAGES} \
-  ${FAT_PACKAGES}
+  ${FAT_PACKAGES} && \
+  apt-get clean -y && \
+  rm -rf \
+  /var/cache/debconf/* \
+  /var/lib/apt/lists/* \
+  /var/log/* \
+  /tmp/* \
+  /var/tmp/*
 
 COPY --from=builder /kubelet /usr/local/bin/kubelet
 
@@ -58,9 +60,17 @@ ENTRYPOINT ["/usr/local/bin/kubelet"]
 FROM base AS container-slim
 
 ARG SLIM_PACKAGES
-RUN clean-install \
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
   --allow-change-held-packages \
-  ${SLIM_PACKAGES}
+  ${SLIM_PACKAGES} && \
+  apt-get clean -y && \
+  rm -rf \
+  /var/cache/debconf/* \
+  /var/lib/apt/lists/* \
+  /var/log/* \
+  /tmp/* \
+  /var/tmp/*
 
 COPY --from=builder /kubelet /usr/local/bin/kubelet
 
